@@ -1,0 +1,8 @@
+{
+  "name": "3D Model Viewer",
+  "slug": "model-viewer",
+  "version": "1.0.0",
+  "tier": "official",
+  "zones": ["input"],
+  "settings": []
+}
