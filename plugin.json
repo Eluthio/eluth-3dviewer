@@ -1,11 +1,20 @@
 {
   "name": "3D Model Viewer",
   "slug": "model-viewer",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "min_server_version": "1.1.0",
   "tier": "official",
   "zones": [
     "input"
   ],
-  "settings": []
+  "settings": [
+    {
+      "key": "max_upload_mb",
+      "label": "Max upload size (MB)",
+      "type": "number",
+      "default": 50,
+      "required": false,
+      "placeholder": "50"
+    }
+  ]
 }
