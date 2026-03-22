@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #12141c;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    canvas { display: block; }
+
+    #loading {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      color: rgba(255,255,255,.45);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid rgba(255,255,255,.1);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error {
+      position: absolute; inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #f87171;
+      font-size: 13px;
+      text-align: center;
+      padding: 20px;
+      gap: 8px;
+      pointer-events: none;
+    }
+    #error svg { opacity: .5; }
+
+    #hint {
+      position: absolute;
+      bottom: 7px; left: 0; right: 0;
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255,255,255,.2);
+      pointer-events: none;
+      letter-spacing: .03em;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Loading model…</span>
+  </div>
+  <div id="error">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span id="error-msg">Failed to load model.</span>
+  </div>
+  <div id="hint">Drag to rotate &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Right-drag to pan</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE               from 'three'
+    import { OrbitControls }        from 'three/addons/controls/OrbitControls.js'
+    import { GLTFLoader }           from 'three/addons/loaders/GLTFLoader.js'
+    import { OBJLoader }            from 'three/addons/loaders/OBJLoader.js'
+    import { STLLoader }            from 'three/addons/loaders/STLLoader.js'
+
+    // ── Parse URL ──────────────────────────────────────────────────────────
+    const params   = new URLSearchParams(location.search)
+    const modelUrl = params.get('url') || ''
+    const ext      = modelUrl.split('?')[0].split('.').pop().toLowerCase()
+
+    const loadingEl  = document.getElementById('loading')
+    const errorEl    = document.getElementById('error')
+    const errorMsgEl = document.getElementById('error-msg')
+
+    function showError(msg) {
+      loadingEl.style.display = 'none'
+      errorEl.style.display   = 'flex'
+      errorMsgEl.textContent  = msg
+    }
+
+    if (!modelUrl)                              { showError('No model URL.'); throw 0 }
+    if (!['obj','stl','glb','gltf'].includes(ext)) { showError('Unsupported format: ' + ext); throw 0 }
+
+    // ── Scene ──────────────────────────────────────────────────────────────
+    const scene    = new THREE.Scene()
+    scene.background = new THREE.Color(0x12141c)
+
+    const camera   = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.001, 10000)
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    renderer.setSize(innerWidth, innerHeight)
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    document.body.appendChild(renderer.domElement)
+
+    const controls             = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping     = true
+    controls.dampingFactor     = 0.07
+    controls.screenSpacePanning = true
+
+    // ── Lighting ───────────────────────────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8))
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4)
+    sun.position.set(5, 10, 5)
+    scene.add(sun)
+
+    const fill = new THREE.DirectionalLight(0x8899ff, 0.35)
+    fill.position.set(-5, -3, -8)
+    scene.add(fill)
+
+    // ── Grid ───────────────────────────────────────────────────────────────
+    const grid = new THREE.GridHelper(20, 30, 0x2a2d3e, 0x1e2030)
+    scene.add(grid)
+
+    // ── Fit camera to loaded object ────────────────────────────────────────
+    function fitToView(object) {
+      const box    = new THREE.Box3().setFromObject(object)
+      const center = box.getCenter(new THREE.Vector3())
+      const size   = box.getSize(new THREE.Vector3())
+      const maxDim = Math.max(size.x, size.y, size.z) || 1
+
+      const fov    = camera.fov * (Math.PI / 180)
+      const dist   = (maxDim / 2) / Math.tan(fov / 2) * 1.6
+
+      camera.position.set(center.x + dist * 0.55, center.y + dist * 0.45, center.z + dist)
+      camera.near = dist * 0.005
+      camera.far  = dist * 50
+      camera.updateProjectionMatrix()
+
+      controls.target.set(center.x, center.y, center.z)
+      controls.minDistance = dist * 0.05
+      controls.maxDistance = dist * 12
+      controls.update()
+
+      grid.position.y = box.min.y
+    }
+
+    function onLoad(object) {
+      scene.add(object)
+      fitToView(object)
+      loadingEl.style.display = 'none'
+    }
+
+    function onError() {
+      showError('Failed to load model.\nCheck that the file is accessible.')
+    }
+
+    // ── Default material (for non-GLB formats) ─────────────────────────────
+    const defaultMat = new THREE.MeshStandardMaterial({
+      color:     0xa78bfa,
+      roughness: 0.45,
+      metalness: 0.05,
+    })
+
+    // ── Load ───────────────────────────────────────────────────────────────
+    if (ext === 'glb' || ext === 'gltf') {
+      new GLTFLoader().load(modelUrl, gltf => onLoad(gltf.scene), undefined, onError)
+
+    } else if (ext === 'obj') {
+      new OBJLoader().load(modelUrl, obj => {
+        obj.traverse(child => {
+          if (child.isMesh) child.material = defaultMat
+        })
+        onLoad(obj)
+      }, undefined, onError)
+
+    } else if (ext === 'stl') {
+      new STLLoader().load(modelUrl, geo => {
+        geo.computeVertexNormals()
+        onLoad(new THREE.Mesh(geo, defaultMat))
+      }, undefined, onError)
+    }
+
+    // ── Resize ─────────────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight
+      camera.updateProjectionMatrix()
+      renderer.setSize(innerWidth, innerHeight)
+    })
+
+    // ── Render loop ────────────────────────────────────────────────────────
+    ;(function animate() {
+      requestAnimationFrame(animate)
+      controls.update()
+      renderer.render(scene, camera)
+    })()
+  </script>
+</body>
+</html>

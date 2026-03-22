@@ -9,6 +9,7 @@
   "tags": ["media", "3d", "upload"],
   "recommended": false,
   "changelog": {
+    "1.0.8": "Interactive Three.js viewer embedded in chat; rotate, zoom, pan OBJ/STL/GLB models inline",
     "1.0.7": "Fix upload error handling; add Accept header to XHR",
     "1.0.6": "Post-upload confirmation panel; allow-download toggle; configurable max upload size",
     "1.0.4": "Fixed CSS bundling and missing styles"
