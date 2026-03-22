@@ -1,0 +1,14 @@
+{
+  "name": "3D Model Viewer",
+  "slug": "model-viewer",
+  "description": "Upload OBJ, STL, or GLB files and share interactive 3D models in chat. Powered by Three.js.",
+  "author": "Eluthio",
+  "tier": "official",
+  "min_server_version": "1.1.0",
+  "max_server_version": null,
+  "tags": ["media", "3d", "upload"],
+  "recommended": false,
+  "changelog": {
+    "1.0.4": "Fixed CSS bundling and missing styles"
+  }
+}
