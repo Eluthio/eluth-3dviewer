@@ -132,7 +132,7 @@ async function upload(file) {
                 }
             })
             xhr.addEventListener('error', () => reject(new Error('Network error.')))
-            xhr.open('POST', props.apiBase.replace(/\/$/, '') + '/api/plugins/model-viewer/upload')
+            xhr.open('POST', props.apiBase.replace(/\/$/, '') + '/plugins/model-viewer/upload')
             xhr.setRequestHeader('Authorization', 'Bearer ' + props.authToken)
             xhr.setRequestHeader('Accept', 'application/json')
             xhr.send(formData)
