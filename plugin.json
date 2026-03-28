@@ -1,7 +1,7 @@
 {
   "name": "3D Model Viewer",
   "slug": "model-viewer",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "min_server_version": "1.1.0",
   "tier": "official",
   "zones": [
